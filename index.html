@@ -263,30 +263,37 @@
             }
             let [left, right] = matchups[currentMatchup];
             
-            // Slide out current items
+            // Reset transform and set new content
             document.getElementById('left-container').style.transform = 'translateX(-100%)';
             document.getElementById('right-container').style.transform = 'translateX(100%)';
+            setItemContent('left-item', left);
+            setItemContent('right-item', right);
             
-            setTimeout(() => {
-                setItemContent('left-item', left);
-                setItemContent('right-item', right);
-                
-                // Slide in new items
-                document.getElementById('left-container').style.transform = 'translateX(0)';
-                document.getElementById('right-container').style.transform = 'translateX(0)';
-                
-                // Play sound
-                document.getElementById('matchup-sound').play();
-            }, 500);
+            // Force reflow
+            void document.getElementById('left-container').offsetWidth;
+            void document.getElementById('right-container').offsetWidth;
+            
+            // Slide in new items
+            document.getElementById('left-container').style.transform = 'translateX(0)';
+            document.getElementById('right-container').style.transform = 'translateX(0)';
+            
+            // Play sound
+            document.getElementById('matchup-sound').play();
         }
 
         function setItemContent(elementId, item) {
             let element = document.getElementById(elementId);
+            element.innerHTML = ''; // Clear previous content
             if (item.imageUrl) {
-                element.innerHTML = `<img src="${item.imageUrl}" alt="${item.name}" style="max-width: 100%; max-height: 100%;"><br>${item.name}`;
-            } else {
-                element.textContent = item.name;
+                let img = document.createElement('img');
+                img.src = item.imageUrl;
+                img.alt = item.name;
+                img.style.maxWidth = '100%';
+                img.style.maxHeight = '80%';
+                element.appendChild(img);
+                element.appendChild(document.createElement('br'));
             }
+            element.appendChild(document.createTextNode(item.name));
         }
 
         function choose(side) {
