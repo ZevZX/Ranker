@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Item Ranker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div id="app">
+        <h1>Item Ranker</h1>
+        <div id="input-section">
+            <h2>Add Items</h2>
+            <input type="text" id="item-input" placeholder="Enter item name">
+            <button onclick="addItem()">Add Item</button>
+            <div id="file-drop-area">
+                <p>Drag and drop images here</p>
+                <input type="file" id="file-input" multiple accept="image/*" onchange="handleFiles(this.files)">
+            </div>
+            <ul id="item-list"></ul>
+            <button onclick="startRanking()">Start Ranking</button>
+        </div>
+        <div id="ranking-section" style="display: none;">
+            <h2>Choose the Better Item</h2>
+            <div id="matchup-container">
+                <div id="item1" class="matchup-item" onclick="submitResult(this.textContent)"></div>
+                <div id="item2" class="matchup-item" onclick="submitResult(this.textContent)"></div>
+            </div>
+        </div>
+        <div id="results-section" style="display: none;">
+            <h2>Final Rankings</h2>
+            <ol id="rankings-list"></ol>
+            <button onclick="showUpsets()">Show Biggest Upsets</button>
+            <div id="upsets-list"></div>
+            <input type="text" id="save-filename" placeholder="Enter filename to save">
+            <button onclick="saveResults()">Save Results</button>
+            <input type="text" id="load-filename" placeholder="Enter filename to load">
+            <button onclick="loadResults()">Load Results</button>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

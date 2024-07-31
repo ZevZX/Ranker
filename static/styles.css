@@ -1,0 +1,53 @@
+body {
+    font-family: Arial, sans-serif;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+h1, h2 {
+    text-align: center;
+}
+
+#file-drop-area {
+    border: 2px dashed #ccc;
+    border-radius: 20px;
+    width: 480px;
+    margin: 20px auto;
+    padding: 20px;
+    text-align: center;
+}
+
+#file-drop-area.highlight {
+    border-color: purple;
+}
+
+#matchup-container {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 20px;
+}
+
+.matchup-item {
+    width: 200px;
+    height: 200px;
+    border: 1px solid #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.matchup-item:hover {
+    transform: scale(1.05);
+}
+
+#rankings-list li {
+    margin-bottom: 10px;
+}
+
+button {
+    display: block;
+    margin: 10px auto;
+}
