@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Round Robin Ranking</title>
+    <style>
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        #input-area, #ranking-area, #matchup-details {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            width: 80%;
+            max-width: 600px;
+        }
+        #comparison-area {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 80%;
+            max-width: 800px;
+            height: 300px;
+            position: relative;
+            overflow: hidden;
+        }
+        .item {
+            width: 45%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            color: white;
+            cursor: pointer;
+            transition: transform 0.3s;
+            position: absolute;
+        }
+        .item:hover {
+            transform: scale(1.05);
+        }
+        #left-item {
+            background-color: #ff4136;
+            clip-path: polygon(0 0, 100% 0, 90% 100%, 0 100%);
+            left: -100%;
+        }
+        #right-item {
+            background-color: #0074d9;
+            clip-path: polygon(10% 0, 100% 0, 100% 100%, 0 100%);
+            right: -100%;
+        }
+        #vs {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 36px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .win {
+            color: green;
+        }
+        .loss {
+            color: red;
+        }
+        .clickable {
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        #image-upload {
+            border: 2px dashed #ccc;
+            border-radius: 20px;
+            width: 300px;
+            margin: 20px auto;
+            padding: 20px;
+            text-align: center;
+        }
+        #image-upload.dragover {
+            background-color: #e1e1e1;
+        }
+        .item-container {
+            position: absolute;
+            width: 45%;
+            height: 100%;
+            transition: transform 0.5s;
+        }
+        #left-container { left: 0; }
+        #right-container { right: 0; }
+    </style>
+</head>
+<body>
+    <div id="input-area">
+        <h2>Enter Items to Rank</h2>
+        <textarea id="item-input" rows="5" cols="50" placeholder="Enter items, one per line."></textarea>
+        <br>
+        <div id="image-upload">
+            <p>Drag & drop images here or click to upload</p>
+            <input type="file" id="file-input" multiple accept="image/*" style="display: none;">
+        </div>
+        <button onclick="startRanking()">Start Ranking</button>
+        <button onclick="loadRankings()">Load Rankings</button>
+    </div>
+
+    <div id="comparison-area" style="display: none;">
+        <div id="left-container" class="item-container">
+            <div id="left-item" class="item" onclick="choose('left')"></div>
+        </div>
+        <div id="right-container" class="item-container">
+            <div id="right-item" class="item" onclick="choose('right')"></div>
+        </div>
+        <div id="vs">VS</div>
+    </div>
+
+    <div id="ranking-area" style="display: none;">
+        <h2>Final Rankings</h2>
+        <table id="rankings">
+            <tr>
+                <th>Rank</th>
+                <th>Item</th>
+                <th>Score</th>
+            </tr>
+        </table>
+        <button onclick="saveRankings()">Save Rankings</button>
+        <button onclick="restartRanking()">Restart Ranking</button>
+        <button onclick="showBiggestUpsets()">Show Biggest Upsets</button>
+    </div>
+
+    <div id="matchup-details" style="display: none;">
+        <h2 id="matchup-title"></h2>
+        <div id="matchup-list"></div>
+        <button onclick="hideMatchupDetails()">Back to Rankings</button>
+    </div>
+
+    <audio id="matchup-sound" src="./assets/matchup.mp3"></audio>
+
+    <script>
+        let items = [];
+        let scores = {};
+        let matchups = [];
+        let currentMatchup = 0;
+        let matchupResults = {};
+
+        // Image upload handling
+        const dropZone = document.getElementById('image-upload');
+        const fileInput = document.getElementById('file-input');
+
+        dropZone.onclick = () => fileInput.click();
+        dropZone.ondragover = (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        };
+        dropZone.ondragleave = () => dropZone.classList.remove('dragover');
+        dropZone.ondrop = (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        };
+        fileInput.onchange = (e) => handleFiles(e.target.files);
+
+        function handleFiles(files) {
+            for (let file of files) {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const name = file.name.split('.')[0];
+                        if (!items.some(item => item.name === name)) {
+                            items.push({ name: name, imageUrl: e.target.result });
+                            updateItemInput();
+                        } else {
+                            alert(`An item with the name "${name}" already exists.`);
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
+        }
+
+        function updateItemInput() {
+            document.getElementById('item-input').value = items.map(item => item.name).join('\n');
+        }
+
+        function startRanking() {
+            let inputItems = document.getElementById('item-input').value.split('\n').filter(item => item.trim() !== '');
+            if (inputItems.length < 2) {
+                alert('Please enter at least 2 items to rank.');
+                return;
+            }
+            
+            // Merge input items with uploaded images
+            inputItems.forEach(name => {
+                if (!items.some(item => item.name === name)) {
+                    items.push({ name: name, imageUrl: null });
+                }
+            });
+
+            // Check for duplicate names
+            let names = items.map(item => item.name);
+            if (new Set(names).size !== names.length) {
+                alert('Duplicate item names are not allowed.');
+                return;
+            }
+
+            items.forEach(item => {
+                scores[item.name] = 0;
+                matchupResults[item.name] = { wins: [], losses: [] };
+            });
+            generateMatchups();
+            document.getElementById('input-area').style.display = 'none';
+            document.getElementById('comparison-area').style.display = 'flex';
+            showNextMatchup();
+        }
+
+        function generateMatchups() {
+            for (let i = 0; i < items.length; i++) {
+                for (let j = i + 1; j < items.length; j++) {
+                    matchups.push([items[i], items[j]]);
+                }
+            }
+            matchups = matchups.sort(() => Math.random() - 0.5);
+        }
+
+        function showNextMatchup() {
+            if (currentMatchup >= matchups.length) {
+                showFinalRankings();
+                return;
+            }
+            let [left, right] = matchups[currentMatchup];
+            
+            // Slide out current items
+            document.getElementById('left-container').style.transform = 'translateX(-100%)';
+            document.getElementById('right-container').style.transform = 'translateX(100%)';
+            
+            setTimeout(() => {
+                setItemContent('left-item', left);
+                setItemContent('right-item', right);
+                
+                // Slide in new items
+                document.getElementById('left-container').style.transform = 'translateX(0)';
+                document.getElementById('right-container').style.transform = 'translateX(0)';
+                
+                // Play sound
+                document.getElementById('matchup-sound').play();
+            }, 500);
+        }
+
+        function setItemContent(elementId, item) {
+            let element = document.getElementById(elementId);
+            if (item.imageUrl) {
+                element.innerHTML = `<img src="${item.imageUrl}" alt="${item.name}" style="max-width: 100%; max-height: 100%;"><br>${item.name}`;
+            } else {
+                element.textContent = item.name;
+            }
+        }
+
+        function choose(side) {
+            let [left, right] = matchups[currentMatchup];
+            let winner, loser;
+            if (side === 'left') {
+                winner = left;
+                loser = right;
+                scores[left.name]++;
+                scores[right.name]--;
+            } else {
+                winner = right;
+                loser = left;
+                scores[right.name]++;
+                scores[left.name]--;
+            }
+            matchupResults[winner.name].wins.push(loser.name);
+            matchupResults[loser.name].losses.push(winner.name);
+            currentMatchup++;
+            showNextMatchup();
+        }
+
+        function showFinalRankings() {
+            document.getElementById('comparison-area').style.display = 'none';
+            document.getElementById('ranking-area').style.display = 'block';
+            let sortedItems = items.sort((a, b) => scores[b.name] - scores[a.name]);
+            let table = document.getElementById('rankings');
+            table.innerHTML = '<tr><th>Rank</th><th>Item</th><th>Score</th></tr>';
+            sortedItems.forEach((item, index) => {
+                let row = table.insertRow(-1);
+                row.insertCell(0).textContent = index + 1;
+                let itemCell = row.insertCell(1);
+                if (item.imageUrl) {
+                    itemCell.innerHTML = `<img src="${item.imageUrl}" alt="${item.name}" style="max-width: 50px; max-height: 50px; vertical-align: middle;"> ${item.name}`;
+                } else {
+                    itemCell.textContent = item.name;
+                }
+                itemCell.classList.add('clickable');
+                itemCell.onclick = () => showMatchupDetails(item.name);
+                row.insertCell(2).textContent = scores[item.name];
+            });
+        }
+
+        function showMatchupDetails(itemName) {
+            document.getElementById('ranking-area').style.display = 'none';
+            document.getElementById('matchup-details').style.display = 'block';
+            document.getElementById('matchup-title').textContent = `Matchups for ${itemName}`;
+            let matchupList = document.getElementById('matchup-list');
+            matchupList.innerHTML = '';
+
+            let wins = matchupResults[itemName].wins;
+            let losses = matchupResults[itemName].losses;
+
+            if (wins.length > 0) {
+                matchupList.innerHTML += '<h3>Wins:</h3>';
+                wins.forEach(opponent => {
+                    let rankDiff = getRankDifference(itemName, opponent);
+                    matchupList.innerHTML += `<p class="win clickable" onclick="showMatchupDetails('${opponent}')">${opponent} (Upset Factor: ${rankDiff})</p>`;
+                });
+            }
+
+            if (losses.length > 0) {
+                matchupList.innerHTML += '<h3>Losses:</h3>';
+                losses.forEach(opponent => {
+                    let rankDiff = getRankDifference(opponent, itemName);
+                    matchupList.innerHTML += `<p class="loss clickable" onclick="showMatchupDetails('${opponent}')">${opponent} (Upset Factor: ${rankDiff})</p>`;
+                });
+            }
+        }
+
+        function getRankDifference(winner, loser) {
+            let sortedItems = items.sort((a, b) => scores[b.name] - scores[a.name]);
+            let winnerRank = sortedItems.findIndex(item => item.name === winner);
+            let loserRank = sortedItems.findIndex(item => item.name === loser);
+            return loserRank - winnerRank;
+        }
+
+        function hideMatchupDetails() {
+            document.getElementById('matchup-details').style.display = 'none';
+            document.getElementById('ranking-area').style.display = 'block';
+        }
+
+        function restartRanking() {
+            document.getElementById('ranking-area').style.display = 'none';
+            document.getElementById('input-area').style.display = 'block';
+            document.getElementById('item-input').value = '';
+            items = [];
+            scores = {};
+            matchups = [];
+            currentMatchup = 0;
+            matchupResults = {};
+        }
+
+        function saveRankings() {
+            let data = {
+                items: items,
+                scores: scores,
+                matchupResults: matchupResults
+            };
+            let blob = new Blob([JSON.stringify(data)], {type: 'application/json'});
+            let url = URL.createObjectURL(blob);
+            let a = document.createElement('a');
+            a.href = url;
+            a.download = 'rankings.json';
+            a.click();
+        }
+
+        function loadRankings() {
+            let input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = function(event) {
+                let file = event.target.files[0];
+                let reader = new FileReader();
+                reader.onload = function(e) {
+                    let data = JSON.parse(e.target.result);
+                    items = data.items;
+                    scores = data.scores;
+                    matchupResults = data.matchupResults;
+                    showFinalRankings();
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+
+        function showBiggestUpsets() {
+            let upsets = [];
+            for (let item in matchupResults) {
+                matchupResults[item].wins.forEach(opponent => {
+                    let upset = getRankDifference(item, opponent);
+                    if (upset > 0) {
+                        upsets.push({ winner: item, loser: opponent, factor: upset });
+                    }
+                });
+            }
+            upsets.sort((a, b) => b.factor - a.factor);
+            
+            let upsetsHtml = '<h2>Biggest Upsets</h2><ol>';
+            upsets.slice(0, 10).forEach(upset => {
+                upsetsHtml += `<li>${upset.winner} beat ${upset.loser} (Upset Factor: ${upset.factor})</li>`;
+            });
+            upsetsHtml += '</ol>';
+            
+            document.getElementById('ranking-area').style.display = 'none';
+            document.getElementById('matchup-details').style.display = 'block';
+            document.getElementById('matchup-details').innerHTML = upsetsHtml + '<button onclick="hideMatchupDetails()">Back to Rankings</button>';
+        }
+    </script>
+</body>
+</html>
+
+
