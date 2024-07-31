@@ -1,3 +1,10 @@
+# To run the app:
+# 1. Make sure you have Flask installed (pip install flask)
+# 2. Open a terminal/command prompt
+# 3. Navigate to the directory containing this file
+# 4. Run the command: python main.py
+# 5. Open a web browser and go to http://127.0.0.1:5000
+
 from flask import Flask, render_template, request, jsonify
 import json
 import random
