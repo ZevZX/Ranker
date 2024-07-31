@@ -120,9 +120,12 @@
             width: 45%;
             height: 100%;
             transition: transform 0.5s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
-        #left-container { left: 0; }
-        #right-container { right: 0; }
+        #left-container { left: 0; transform: translateX(-100%); }
+        #right-container { right: 0; transform: translateX(100%); }
     </style>
 </head>
 <body>
@@ -263,22 +266,26 @@
             }
             let [left, right] = matchups[currentMatchup];
             
-            // Reset transform and set new content
-            document.getElementById('left-container').style.transform = 'translateX(-100%)';
-            document.getElementById('right-container').style.transform = 'translateX(100%)';
+            // Set new content
             setItemContent('left-item', left);
             setItemContent('right-item', right);
+            
+            // Reset transform to move items off-screen
+            document.getElementById('left-container').style.transform = 'translateX(-100%)';
+            document.getElementById('right-container').style.transform = 'translateX(100%)';
             
             // Force reflow
             void document.getElementById('left-container').offsetWidth;
             void document.getElementById('right-container').offsetWidth;
             
             // Slide in new items
-            document.getElementById('left-container').style.transform = 'translateX(0)';
-            document.getElementById('right-container').style.transform = 'translateX(0)';
-            
-            // Play sound
-            document.getElementById('matchup-sound').play();
+            setTimeout(() => {
+                document.getElementById('left-container').style.transform = 'translateX(0)';
+                document.getElementById('right-container').style.transform = 'translateX(0)';
+                
+                // Play sound
+                document.getElementById('matchup-sound').play();
+            }, 50);
         }
 
         function setItemContent(elementId, item) {
